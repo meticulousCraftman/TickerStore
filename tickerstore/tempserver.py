@@ -14,11 +14,13 @@ url = s.get_login_url()
 
 @app.route("/")
 def demo():
+    """Redirects user to login page"""
     return redirect(url)
 
 
 @app.route("/callback", methods=["GET"])
 def callback():
+    """Receives the callback from server and gets the access token."""
     code = request.args["code"]
     s.set_code(code)
     access_token = s.retrieve_access_token()
@@ -39,6 +41,7 @@ def callback():
 
 @app.route("/shutdown")
 def shutdown():
+    """Shuts down flask server."""
     func = request.environ.get("werkzeug.server.shutdown")
     if func is None:
         raise RuntimeError("Not running with Werkzeug Server")
