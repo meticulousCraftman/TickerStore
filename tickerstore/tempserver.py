@@ -12,6 +12,14 @@ s.set_api_secret(os.getenv("UPSTOX_API_SECRET"))
 url = s.get_login_url()
 
 
+def shutdown_server():
+    func = request.environ.get("werkzeug.server.shutdown")
+    if func is None:
+        raise RuntimeError("Not running with Werkzeug Server")
+    func()
+
+
+
 @app.route("/")
 def demo():
     return redirect(url)
@@ -23,6 +31,12 @@ def callback():
     s.set_code(code)
     access_token = s.retrieve_access_token()
     return f'Access Token: {access_token}<br><b>Now drop back to the shell!</b>'
+
+
+@app.route("/shutdown")
+def shutdown():
+    shutdown_server()
+    return "Server Shutting down..."
 
 
 if __name__ == "__main__":
