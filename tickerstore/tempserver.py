@@ -12,14 +12,6 @@ s.set_api_secret(os.getenv("UPSTOX_API_SECRET"))
 url = s.get_login_url()
 
 
-def shutdown_server():
-    func = request.environ.get("werkzeug.server.shutdown")
-    if func is None:
-        raise RuntimeError("Not running with Werkzeug Server")
-    func()
-
-
-
 @app.route("/")
 def demo():
     return redirect(url)
@@ -27,19 +19,28 @@ def demo():
 
 @app.route("/callback", methods=["GET"])
 def callback():
-    code = request.args['code']
+    code = request.args["code"]
     s.set_code(code)
     access_token = s.retrieve_access_token()
-    return f'Access Token: {access_token}<br><b>Now drop back to the shell!</b>'
+    html_code = """
+        Access token : %s
+        <br>
+        <b>Go back to the terminal now!</b>
+        <script>
+            setInterval(function() {window.location="%s"}, 2000);
+        </script>
+        """ % (
+        access_token,
+        os.getenv("TEMP_SERVER_SHUTDOWN_URL"),
+    )
+    app.queue.put(access_token)
+    return html_code
 
 
 @app.route("/shutdown")
 def shutdown():
-    shutdown_server()
+    func = request.environ.get("werkzeug.server.shutdown")
+    if func is None:
+        raise RuntimeError("Not running with Werkzeug Server")
+    func()
     return "Server Shutting down..."
-
-
-if __name__ == "__main__":
-    os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
-    app.secret_key = os.urandom(24)
-    app.run(debug=True)
