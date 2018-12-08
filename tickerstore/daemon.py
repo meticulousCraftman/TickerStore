@@ -1,5 +1,5 @@
 from upstox_api.api import *
-import tempserver as ts
+from . import tempserver as ts
 import multiprocessing as mp
 import webbrowser
 import os
@@ -54,4 +54,4 @@ if __name__ == "__main__":
     access_token = auth_upstox()
     u = Upstox(os.getenv("UPSTOX_API_KEY"), access_token)
     u.get_master_contract("NSE_EQ")
-    fetch_1minute(u)
+    # fetch_1minute(u)

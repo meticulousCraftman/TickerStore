@@ -1,9 +1,12 @@
 from dotenv import load_dotenv, find_dotenv
 from influxdb import InfluxDBClient
 from upstox_api.api import *
+from . import daemon as daemon
 import datetime
-import daemon
+import pathlib
 import os
+import time
+import json
 
 load_dotenv(find_dotenv())
 client = InfluxDBClient(
@@ -63,7 +66,20 @@ def historical_data(ticker: str, _from_date: str, _to_date: str, interval: int) 
 
     # Fetching the data from upstox
     else:
-        access_token = daemon.auth_upstox()
+        package_folder_path = pathlib.Path(__file__).parent
+        access_token_file = package_folder_path / "access_token.file"
+        if access_token_file.exists():
+            with open(access_token_file, "r") as file:
+                data = json.load(file)
+                access_token = data["access_token"]
+                print("Found access_token.file (Contents)--->")
+                print(data)
+        else:
+            access_token = daemon.auth_upstox()
+            with open(access_token_file, "w") as file:
+                json.dump(
+                    {"access_token": access_token, "time": int(time.time())}, file
+                )
         u = Upstox(os.getenv("UPSTOX_API_KEY"), access_token)
         u.get_master_contract("NSE_EQ")
         instrument = u.get_instrument_by_symbol("NSE_EQ", ticker)
