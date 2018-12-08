@@ -4,7 +4,16 @@ import webbrowser
 import os
 
 
-def auth_upstox():
+def auth_upstox() -> str:
+    """Helps in authorizing Upstox user and returns the access_token.
+
+    Returns
+    -------
+    str
+        Returns the access token for the verified individual.
+
+    """
+
     def start_server(queue):
         ts.app.queue = queue
         ts.app.run()
