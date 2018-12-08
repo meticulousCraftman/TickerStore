@@ -7,6 +7,7 @@ import pathlib
 import os
 import time
 import json
+import math
 
 load_dotenv(find_dotenv())
 client = InfluxDBClient(
@@ -68,18 +69,38 @@ def historical_data(ticker: str, _from_date: str, _to_date: str, interval: int) 
     else:
         package_folder_path = pathlib.Path(__file__).parent
         access_token_file = package_folder_path / "access_token.file"
+
+        # Access toke file exists
         if access_token_file.exists():
             with open(access_token_file, "r") as file:
                 data = json.load(file)
-                access_token = data["access_token"]
-                print("Found access_token.file (Contents)--->")
-                print(data)
+                access_token_time = datetime.datetime.fromtimestamp(data["time"])
+                present_time = datetime.datetime.fromtimestamp(int(time.time()))
+
+                # Content in file is old, re-fetch access token
+                if math.fabs(access_token_time.day - present_time.day) > 0:
+                    # Again fetch the access_token
+                    access_token = daemon.auth_upstox()
+                    with open(access_token_file, "w") as z:
+                        json.dump(
+                            {"access_token": access_token, "time": int(time.time())}, z
+                        )
+
+                # Contents of file is new
+                else:
+                    access_token = data["access_token"]
+                    print("Found access_token.file (Contents)--->")
+                    print(data)
+
+        # No access token file found
         else:
             access_token = daemon.auth_upstox()
             with open(access_token_file, "w") as file:
                 json.dump(
                     {"access_token": access_token, "time": int(time.time())}, file
                 )
+
+        # Fetch the actual data
         u = Upstox(os.getenv("UPSTOX_API_KEY"), access_token)
         u.get_master_contract("NSE_EQ")
         instrument = u.get_instrument_by_symbol("NSE_EQ", ticker)
