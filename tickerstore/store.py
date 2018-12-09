@@ -16,13 +16,6 @@ client = InfluxDBClient(
 
 INTERVAL_TICK_BY_TICK = 1
 INTERVAL_MINUTE_1 = 2
-# INTERVAL_MINUTE_5 = 3
-# INTERVAL_MINUTE_10 = 4
-# INTERVAL_MINUTE_30 = 5
-# INTERVAL_MINUTE_60 = 6
-# INTERVAL_DAY = 7
-# INTERVAL_WEEK = 8
-# INTERVAL_MONTH = 9
 
 
 def historical_data(ticker: str, _from_date: str, _to_date: str, interval: int) -> None:
@@ -65,7 +58,7 @@ def historical_data(ticker: str, _from_date: str, _to_date: str, interval: int) 
         # Select the timeframe and return data
         pass
 
-    # Fetching the data from upstox
+    # Fetching the data from Upstox
     else:
         package_folder_path = pathlib.Path(__file__).parent
         access_token_file = package_folder_path / "access_token.file"
