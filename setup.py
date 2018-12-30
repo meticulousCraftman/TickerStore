@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="tickerstore",
+    name="TickerStore",
     version="0.0.1",
     author="Apoorva Singh",
     author_email="apoorva.singh157@gmail.com",
@@ -12,6 +12,7 @@ setuptools.setup(
     long_description=long_description,
     url="https://github.com/meticulousCraftman/tickerstore",
     license="MIT",
+    install_requires=["upstox", "python-dotenv", "Flask", "influxdb"],
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
