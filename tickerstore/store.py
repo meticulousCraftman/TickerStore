@@ -16,6 +16,13 @@ client = InfluxDBClient(
 
 INTERVAL_TICK_BY_TICK = 1
 INTERVAL_MINUTE_1 = 2
+INTERVAL_MINUTE_5 = 3
+INTERVAL_MINUTE_10 = 4
+INTERVAL_MINUTE_30 = 5
+INTERVAL_MINUTE_60 = 6
+INTERVAL_DAY_1 = 7
+INTERVAL_WEEK_1 = 8
+INTERVAL_MONTH_1 = 9
 
 
 def historical_data(ticker: str, _from_date: str, _to_date: str, interval: int) -> None:
@@ -97,5 +104,24 @@ def historical_data(ticker: str, _from_date: str, _to_date: str, interval: int) 
         u = Upstox(os.getenv("UPSTOX_API_KEY"), access_token)
         u.get_master_contract("NSE_EQ")
         instrument = u.get_instrument_by_symbol("NSE_EQ", ticker)
-        data = u.get_ohlc(instrument, OHLCInterval.Minute_1, from_date, to_date)
+
+        # Fetching data depending on the interval specified
+        data = None
+        if interval == INTERVAL_MINUTE_1:
+            data = u.get_ohlc(instrument, OHLCInterval.Minute_1, from_date, to_date)
+        elif interval == INTERVAL_MINUTE_5:
+            data = u.get_ohlc(instrument, OHLCInterval.Minute_5, from_date, to_date)
+        elif interval == INTERVAL_MINUTE_10:
+            data = u.get_ohlc(instrument, OHLCInterval.Minute_10, from_date, to_date)
+        elif interval == INTERVAL_MINUTE_30:
+            data = u.get_ohlc(instrument, OHLCInterval.Minute_30, from_date, to_date)
+        elif interval == INTERVAL_MINUTE_60:
+            data = u.get_ohlc(instrument, OHLCInterval.Minute_60, from_date, to_date)
+        elif interval == INTERVAL_DAY_1:
+            data = u.get_ohlc(instrument, OHLCInterval.Day_1, from_date, to_date)
+        elif interval == INTERVAL_WEEK_1:
+            data = u.get_ohlc(instrument, OHLCInterval.Week_1, from_date, to_date)
+        elif interval == INTERVAL_MONTH_1:
+            data = u.get_ohlc(instrument, OHLCInterval.Month_1, from_date, to_date)
+
         return data
