@@ -9,11 +9,11 @@ import time
 import json
 import math
 import crayons
+import pandas
 
 
 class TickerStore:
     UPSTOX = "upstox"
-    YAHOO = "yahoo"
     NSE = "nse"
 
     INTERVAL_TICK_BY_TICK = 1
@@ -27,11 +27,7 @@ class TickerStore:
     INTERVAL_MONTH_1 = 9
 
     def __init__(self, **kwargs):
-        self.fetch_order = [
-            TickerStore.UPSTOX,
-            TickerStore.YAHOO,
-            TickerStore.NSE,
-        ]  # Default fetch order
+        self.fetch_order = [TickerStore.UPSTOX, TickerStore.NSE]  # Default fetch order
 
         if "env_file" in kwargs:
             # Load everything from the environment file
@@ -224,6 +220,19 @@ class TickerStore:
         """
         if interval == TickerStore.INTERVAL_DAY_1:
             data = nsepy.get_history(symbol=ticker, start=start_date, end=end_date)
-            return data
+            formatted_data = data.copy(deep=True)
+            formatted_data = formatted_data.drop(
+                columns=[
+                    "Series",
+                    "Prev Close",
+                    "VWAP",
+                    "Turnover",
+                    "Trades",
+                    "Deliverable Volume",
+                    "%Deliverble",
+                    "Last",
+                ]
+            )
+            return formatted_data
         else:
             raise SourceError("NSE source: not available for requested interval.")
