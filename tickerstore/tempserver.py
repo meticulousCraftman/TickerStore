@@ -1,27 +1,25 @@
 from flask import Flask, request, redirect
-from dotenv import find_dotenv, load_dotenv
 from upstox_api.api import *
 import os
 
 
-load_dotenv(find_dotenv())
-
 app = Flask(__name__)
-s = Session(os.getenv("UPSTOX_API_KEY"))
-s.set_redirect_uri(os.getenv("UPSTOX_REDIRECT_URI"))
-s.set_api_secret(os.getenv("UPSTOX_API_SECRET"))
-url = s.get_login_url()
 
 
 @app.route("/")
 def demo():
     """Redirects user to login page"""
+    s = Session(os.getenv("UPSTOX_API_KEY"))
+    s.set_redirect_uri(os.getenv("UPSTOX_REDIRECT_URI"))
+    s.set_api_secret(os.getenv("UPSTOX_API_SECRET"))
+    url = s.get_login_url()
     return redirect(url)
 
 
 @app.route("/callback", methods=["GET"])
 def callback():
     """Receives the callback from server and gets the access token."""
+    temp_server_shutdown_url = "http://127.0.0.1:5000/shutdown"
     code = request.args["code"]
     s.set_code(code)
     access_token = s.retrieve_access_token()
@@ -34,7 +32,7 @@ def callback():
         </script>
         """ % (
         access_token,
-        os.getenv("TEMP_SERVER_SHUTDOWN_URL"),
+        temp_server_shutdown_url,
     )
     app.queue.put(access_token)
     return html_code
