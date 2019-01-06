@@ -140,16 +140,29 @@ class TickerStore:
 
         def verify_credentails():
             """Verify the given Upstox credentials and then proceed to fetch historical data."""
-            s = Session(os.getenv("UPSTOX_API_KEY"))
-            s.set_redirect_uri(os.getenv("UPSTOX_REDIRECT_URI"))
-            s.set_api_secret(os.getenv("UPSTOX_API_SECRET"))
-            url = s.get_login_url()
 
-            req = requests.get(url)
-            if req.status_code == 401:
-                # Something, wrong with the API or credentials provided
-                info = req.json()
-                raise SourceError(str(info))
+            api_key = os.getenv("UPSTOX_API_KEY", "temp")
+            redirect_uri = os.getenv("UPSTOX_REDIRECT_URI", "temp")
+            api_secret = os.getenv("UPSTOX_API_SECRET", "temp")
+
+            if (
+                api_key is not "temp"
+                or redirect_uri is not "temp"
+                or api_secret is not "temp"
+            ):
+                s = Session(os.getenv("UPSTOX_API_KEY"))
+                s.set_redirect_uri(os.getenv("UPSTOX_REDIRECT_URI"))
+                s.set_api_secret(os.getenv("UPSTOX_API_SECRET"))
+                url = s.get_login_url()
+
+                req = requests.get(url)
+                print(req.status_code)
+                if req.status_code != 200:
+                    # Something, wrong with the API or credentials provided
+                    info = req.json()
+                    raise SourceError(str(info))
+            else:
+                raise SourceError("Invalid Upstox API Key and API Secret.")
 
         package_folder_path = pathlib.Path(__file__).parent
         access_token_file = package_folder_path / "access_token.file"
