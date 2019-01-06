@@ -3,6 +3,7 @@ from dotenv import find_dotenv, load_dotenv
 from upstox_api.api import *
 import os
 
+
 load_dotenv(find_dotenv())
 
 app = Flask(__name__)

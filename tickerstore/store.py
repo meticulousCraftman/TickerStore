@@ -1,6 +1,6 @@
-from dotenv import load_dotenv, find_dotenv
 from upstox_api.api import *
 from . import daemon as daemon
+from tickerstore.errors import SourceError
 import nsepy
 import datetime
 import pathlib
@@ -8,6 +8,7 @@ import os
 import time
 import json
 import math
+import crayons
 
 
 class TickerStore:
@@ -37,38 +38,81 @@ class TickerStore:
             pass
 
     def set_fetch_order(self, fetch_order):
+        """
+        Fetches data from multiple sources.
+
+        Parameters
+        ---------
+            fetch_order: list
+                Pass a list containing the order in which the historical data would be fetched.
+
+        Returns
+        -------
+        None
+
+        """
         if self.fetch_order is not None:
             self.fetch_order = fetch_order
 
+    def get_fetch_order(self):
+        """Returns the fetch order of historical data."""
+        return self.fetch_order
+
     def historical_data(self, ticker, start_date, end_date, interval):
-        for source in self.fetch_order:
-            if source == TickerStore.UPSTOX:
-                return self.upstox_historical_data(
-                    ticker, start_date, end_date, interval
-                )
-            elif source == TickerStore.NSE:
-                return self.nse_historical_data(ticker, start_date, end_date, interval)
-            elif source == TickerStore.YAHOO:
-                pass
-
-    def upstox_historical_data(self, ticker, _from_date, _to_date, interval):
         """
-        Fetches data from Influx DB.
-
-        First it checks whether the data is present in DB or not.
-        If yes, it simply returns the data. Else, it requests the
-        ticker reporter to fetch the data from Upstox or Zerodha.
+        Fetches data from multiple sources.
 
         Parameters
         ---------
             ticker: str
                 A string of the form "<EXCHANGE>:<SYMBOL>" eg. NSE:RELIANCE
-            _from_date: str
-                Date from where historical data needs to be fetched. It should
-                be of the form DD/MM/YYYY eg. 01/12/2018.
-            _to_date: str
-                Date uptil when you want the historical data. It should be of
-                the form DD/MM/YYYY eg. 3/12/2018
+            start_date: datetime.date
+                Date from where historical data needs to be fetched. Eg. date(2018,1,1)
+            end_date: datetime.date
+                Date uptil which you want the historical data to be fetched. Eg. date(2018,6,1)
+            interval: int
+                Make use of INTERVAL_* variables in TickerStore class to specify the
+                time interval in which to operate on.
+
+        Returns
+        -------
+        JSON
+            A list of dictionaries is return. Each dictionary represents
+            each time interval.
+        """
+
+        for source in self.fetch_order:
+
+            # Source: Upstox
+            if source == TickerStore.UPSTOX:
+                try:
+                    return self.upstox_historical_data(
+                        ticker, start_date, end_date, interval
+                    )
+                except SourceError as e:
+                    print(crayons.red("Upstox source error: %s" % e, bold=True))
+
+            # Source: NSE
+            elif source == TickerStore.NSE:
+                try:
+                    return self.nse_historical_data(
+                        ticker, start_date, end_date, interval
+                    )
+                except SourceError as e:
+                    print(crayons.red("Upstox source error: %s" % e, bold=True))
+
+    def upstox_historical_data(self, ticker, start_date, end_date, interval):
+        """
+        Fetches data from Upstox API
+
+        Parameters
+        ---------
+            ticker: str
+                A string of the form "<EXCHANGE>:<SYMBOL>" eg. NSE:RELIANCE
+            start_date: datetime.date
+                Date from where historical data needs to be fetched. Eg. date(2018,1,1)
+            end_date: datetime.date
+                Date uptil which you want the historical data to be fetched. Eg. date(2018,6,1)
             interval: int
                 Make use of INTERVAL_* variables in tickerstore module to specify the
                 time interval in which to operate on.
@@ -80,8 +124,19 @@ class TickerStore:
             each time interval.
 
         """
-        from_date = datetime.datetime.strptime(_from_date, "%d/%m/%Y").date()
-        to_date = datetime.datetime.strptime(_to_date, "%d/%m/%Y").date()
+
+        def verify_credentails():
+            """Verify the given Upstox credentials and then proceed to fetch historical data."""
+            s = Session(os.getenv("UPSTOX_API_KEY"))
+            s.set_redirect_uri(os.getenv("UPSTOX_REDIRECT_URI"))
+            s.set_api_secret(os.getenv("UPSTOX_API_SECRET"))
+            url = s.get_login_url()
+
+            req = requests.get(url)
+            if req.status_code == 401:
+                # Something, wrong with the API or credentials provided
+                info = req.json()
+                raise SourceError(str(info))
 
         package_folder_path = pathlib.Path(__file__).parent
         access_token_file = package_folder_path / "access_token.file"
@@ -96,6 +151,7 @@ class TickerStore:
                 # Content in file is old, re-fetch access token
                 if math.fabs(access_token_time.day - present_time.day) > 0:
                     # Again fetch the access_token
+                    verify_credentails()
                     access_token = daemon.auth_upstox()
                     with open(access_token_file, "w") as z:
                         json.dump(
@@ -110,6 +166,8 @@ class TickerStore:
 
         # No access token file found
         else:
+            # If everything is fine, proceed to get the access token
+            verify_credentails()
             access_token = daemon.auth_upstox()
             with open(access_token_file, "w") as file:
                 json.dump(
@@ -124,26 +182,48 @@ class TickerStore:
         # Fetching data depending on the interval specified
         data = None
         if interval == TickerStore.INTERVAL_MINUTE_1:
-            data = u.get_ohlc(instrument, OHLCInterval.Minute_1, from_date, to_date)
+            data = u.get_ohlc(instrument, OHLCInterval.Minute_1, start_date, end_date)
         elif interval == TickerStore.INTERVAL_MINUTE_5:
-            data = u.get_ohlc(instrument, OHLCInterval.Minute_5, from_date, to_date)
+            data = u.get_ohlc(instrument, OHLCInterval.Minute_5, start_date, end_date)
         elif interval == TickerStore.INTERVAL_MINUTE_10:
-            data = u.get_ohlc(instrument, OHLCInterval.Minute_10, from_date, to_date)
+            data = u.get_ohlc(instrument, OHLCInterval.Minute_10, start_date, end_date)
         elif interval == TickerStore.INTERVAL_MINUTE_30:
-            data = u.get_ohlc(instrument, OHLCInterval.Minute_30, from_date, to_date)
+            data = u.get_ohlc(instrument, OHLCInterval.Minute_30, start_date, end_date)
         elif interval == TickerStore.INTERVAL_MINUTE_60:
-            data = u.get_ohlc(instrument, OHLCInterval.Minute_60, from_date, to_date)
+            data = u.get_ohlc(instrument, OHLCInterval.Minute_60, start_date, end_date)
         elif interval == TickerStore.INTERVAL_DAY_1:
-            data = u.get_ohlc(instrument, OHLCInterval.Day_1, from_date, to_date)
+            data = u.get_ohlc(instrument, OHLCInterval.Day_1, start_date, end_date)
         elif interval == TickerStore.INTERVAL_WEEK_1:
-            data = u.get_ohlc(instrument, OHLCInterval.Week_1, from_date, to_date)
+            data = u.get_ohlc(instrument, OHLCInterval.Week_1, start_date, end_date)
         elif interval == TickerStore.INTERVAL_MONTH_1:
-            data = u.get_ohlc(instrument, OHLCInterval.Month_1, from_date, to_date)
+            data = u.get_ohlc(instrument, OHLCInterval.Month_1, start_date, end_date)
 
         return data
 
     def nse_historical_data(self, ticker, start_date, end_date, interval):
-        start_date = datetime.datetime.strptime(start_date, "%d/%m/%Y").date()
-        end_date = datetime.datetime.strptime(end_date, "%d/%m/%Y").date()
-        data = nsepy.get_history(symbol=ticker, start=start_date, end=end_date)
-        return data
+        """
+        Fetches data from Upstox API
+
+        Parameters
+        ---------
+            ticker: str
+                String representing the ticker symbol. eg. "SBIN"
+            start_date: datetime.date
+                Date from where historical data needs to be fetched. Eg. date(2018,1,1)
+            end_date: datetime.date
+                Date uptil which you want the historical data to be fetched. Eg. date(2018,6,1)
+            interval: int
+                Make use of INTERVAL_* variables in tickerstore module to specify the
+                time interval in which to operate on.
+
+        Returns
+        -------
+        JSON
+            A list of dictionaries is return. Each dictionary represents
+            each time interval.
+        """
+        if interval == TickerStore.INTERVAL_DAY_1:
+            data = nsepy.get_history(symbol=ticker, start=start_date, end=end_date)
+            return data
+        else:
+            raise SourceError("NSE source: not available for requested interval.")
