@@ -1,6 +1,6 @@
 # Ticker Store: Simple Historical Data
 
-![TickerStore Logo](https://ibb.co/yWd153P)
+![TickerStore Logo](screenshots/tickerstore-logo.png)
 
 
 ## Super simple to use
