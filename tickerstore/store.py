@@ -1,6 +1,7 @@
 from upstox_api.api import *
 from . import daemon as daemon
 from tickerstore.errors import SourceError
+from tickerstore.errors import TickerStoreError
 from dotenv import load_dotenv
 import nsepy
 import datetime
@@ -85,13 +86,13 @@ class TickerStore:
             A list of dictionaries is return. Each dictionary represents
             each time interval.
         """
-
+        historical_data = None
         for source in self.fetch_order:
 
             # Source: Upstox
             if source == TickerStore.UPSTOX:
                 try:
-                    return self.upstox_historical_data(
+                    historical_data = self.upstox_historical_data(
                         ticker, start_date, end_date, interval
                     )
                 except SourceError as e:
@@ -100,11 +101,18 @@ class TickerStore:
             # Source: NSE
             elif source == TickerStore.NSE:
                 try:
-                    return self.nse_historical_data(
+                    historical_data = self.nse_historical_data(
                         ticker, start_date, end_date, interval
                     )
                 except SourceError as e:
                     print(crayons.red("NSE source error: %s" % e, bold=True))
+
+        if historical_data is None:
+            raise TickerStoreError(
+                "No source provided data for the requested time interval!"
+            )
+
+        return historical_data
 
     def upstox_historical_data(self, ticker, start_date, end_date, interval):
         """
