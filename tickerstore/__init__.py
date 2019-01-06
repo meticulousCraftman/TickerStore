@@ -1,1 +1,1 @@
-from .store import historical_data
+from .store import TickerStore
