@@ -1,6 +1,6 @@
-# Ticker Store: Simple Historical Data
 
-![TickerStore Logo](screenshots/tickerstore-logo.png)
+<p align="center"><img src="screenshots/tickerstore-logo.png"></p>
+
 
 
 ## Super simple to use
