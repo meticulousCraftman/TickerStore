@@ -1,5 +1,7 @@
 # Ticker Store: Simple Historical Data
 
+![TickerStore Logo](https://ibb.co/yWd153P)
+
 
 ## Super simple to use
 
@@ -19,7 +21,7 @@ from tickerstore.store import TickerStore
 from datetime import date
 
 fetcher = TickerStore()
-fetcher.historical_data("SBIN", date(2018,01,01), date(2018,01,30), TickerStore.INTERVAL_DAY_1)
+fetcher.historical_data("SBIN", date(2018,1,1), date(2018,1,30), TickerStore.INTERVAL_DAY_1)
 
 ```
 
@@ -39,7 +41,7 @@ from dotenv import find_dotenv
 from datetime import date
 
 fetcher = TickerStore(dotenv=find_dotenv())
-fetcher.historical_data("SBIN", date(2018,01,01), date(2018,01,30), TickerStore.INTERVAL_DAY_1)
+fetcher.historical_data("SBIN", date(2018,1,1), date(2018,1,30), TickerStore.INTERVAL_DAY_1)
 
 ```
 
@@ -55,7 +57,7 @@ fetcher = TickerStore(
     upstox_redirect_uri="http://localhost:5000/callback",
     )
 
-fetcher.historical_data("SBIN", date(2018,01,01), date(2018,01,30), TickerStore.INTERVAL_DAY_1)
+fetcher.historical_data("SBIN", date(2018,1,1), date(2018,1,30), TickerStore.INTERVAL_DAY_1)
 
 ```
 
