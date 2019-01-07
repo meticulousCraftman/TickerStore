@@ -21,6 +21,9 @@ def callback():
     """Receives the callback from server and gets the access token."""
     temp_server_shutdown_url = "http://127.0.0.1:5000/shutdown"
     code = request.args["code"]
+    s = Session(os.getenv("UPSTOX_API_KEY"))
+    s.set_redirect_uri(os.getenv("UPSTOX_REDIRECT_URI"))
+    s.set_api_secret(os.getenv("UPSTOX_API_SECRET"))
     s.set_code(code)
     access_token = s.retrieve_access_token()
     html_code = """
