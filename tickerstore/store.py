@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import nsepy
 import datetime
 import pathlib
+import pandas
 import os
 import time
 import json
@@ -95,6 +96,7 @@ class TickerStore:
                     historical_data = self.upstox_historical_data(
                         ticker, start_date, end_date, interval
                     )
+                    break
                 except SourceError as e:
                     print(crayons.red("Upstox source error: %s" % e, bold=True))
 
@@ -104,6 +106,7 @@ class TickerStore:
                     historical_data = self.nse_historical_data(
                         ticker, start_date, end_date, interval
                     )
+                    break
                 except SourceError as e:
                     print(crayons.red("NSE source error: %s" % e, bold=True))
 
@@ -224,7 +227,26 @@ class TickerStore:
         elif interval == TickerStore.INTERVAL_MONTH_1:
             data = u.get_ohlc(instrument, OHLCInterval.Month_1, start_date, end_date)
 
-        return data
+        # Data formatting
+        formatted_data = pandas.DataFrame(data)
+        formatted_data["timestamp"] = formatted_data["timestamp"] / 1000
+        formatted_data["timestamp"] = formatted_data["timestamp"].apply(
+            datetime.datetime.fromtimestamp
+        )
+        formatted_data = formatted_data.set_index("timestamp")
+        formatted_data["Symbol"] = ticker
+        formatted_data = formatted_data.rename(
+            columns={
+                "close": "Close",
+                "high": "High",
+                "low": "Low",
+                "open": "Open",
+                "volume": "Volume",
+            }
+        )
+        formatted_data = formatted_data.drop(columns=["cp"])
+
+        return formatted_data
 
     def nse_historical_data(self, ticker, start_date, end_date, interval):
         """
