@@ -5,7 +5,8 @@
 
 ## Super simple to use
 
-Ticker Store is designed to be the simplest way possible to get historical data for financial instruments. It has multiple sources for fetching hsitorical data and a standard output for using the data.
+TickerStore is an easy to use python library used to get historical 
+data of financial instruments from NSE.
 
 
 ## Install
@@ -29,8 +30,6 @@ fetcher.historical_data("SBIN", date(2018,1,1), date(2018,1,30), TickerStore.INT
 
 ```  
 
-If one fails, the next one is tried in order.  
-
 ## How it works?
 TickerStore tries to make historical stock market data more easy to
 use in your python projects. TickerStore has multiple sources from
@@ -40,8 +39,8 @@ Data from these 2 sources are fetched in a predefined order.
 The default order is:
   1. Upstox
   2. NSE
-  
-You can change the order using a **set_fetch_order()** method.
+
+If one fails, the next one is tried in order. You can change the order using a **set_fetch_order()** method.
 To view the present fetch order use the **get_fetch_order()** method.
 
 
@@ -88,6 +87,24 @@ fetcher = TickerStore(
 fetcher.historical_data("SBIN", date(2018,1,1), date(2018,1,30), TickerStore.INTERVAL_DAY_1)
 
 ```
+
+
+## Change fetch order
+Order in which the data is fetched from different sources can be changed.
+
+```python
+from tickerstore.store import TickerStore
+from dotenv import find_dotenv
+from datetime import date
+
+fetcher = TickerStore(dotenv=find_dotenv())
+fetcher.set_fetch_order([TickerStore.NSE, TickerStore.UPSTOX])
+
+fetcher.historical_data("SBIN", date(2018,1,1), date(2018,1,30), TickerStore.INTERVAL_DAY_1)
+
+```
+TickerStore now first fetches data from NSE and then from UPSTOX. You can
+even specify a single source and data will only be fetched from there.  
 
 ## API
 Coming soon :)
