@@ -17,9 +17,7 @@ $ pip install tickerstore
 
 Using TickerStore you can specify the source from where the data needs
 to be fetched. At present, there are 2 sources of data **Upstox** and 
-**NSE**.
-
-EOD (End of Day) data can be used simple by using the following piece
+**NSE**. EOD (End of Day) data can be used simple by using the following piece
 of code. 
 
 ```python
@@ -29,17 +27,28 @@ from datetime import date
 fetcher = TickerStore()
 fetcher.historical_data("SBIN", date(2018,1,1), date(2018,1,30), TickerStore.INTERVAL_DAY_1)
 
-```
-
-The default order in which the data is fetched:
-  1. Upstox
-  2. NSE  
+```  
 
 If one fails, the next one is tried in order.  
 
+## How it works?
+TickerStore tries to make historical stock market data more easy to
+use in your python projects. TickerStore has multiple sources from
+where the data is fetched. At present we have 2 sources, **NSE** and **Upstox**.
+Data from these 2 sources are fetched in a predefined order. 
+
+The default order is:
+  1. Upstox
+  2. NSE
+  
+You can change the order using a **set_fetch_order()** method.
+To view the present fetch order use the **get_fetch_order()** method.
+
+
 ## Using with .env file (python-dotenv)
 
-Using with **python-dotenv**:
+Create a **.env** file in the present working directory and enter your 
+Upstox API key and API secret and leave all other fields as it is.
 
 ```dotenv
 UPSTOX_API_KEY=<YOUR_UPSTOX_API_KEY>
@@ -49,6 +58,9 @@ TEMP_SERVER_SHUTDOWN_URL=http://127.0.0.1:5000/shutdown
 TEMP_SERVER_AUTH_PAGE=http://127.0.0.1:5000/
 ```
 
+On python end, use the **find_dotenv** function from the python-dotenv
+package and pass it to the TickerStore. The information from the dotenv 
+file will be available as environment variables.
 ```python
 from tickerstore.store import TickerStore
 from dotenv import find_dotenv
