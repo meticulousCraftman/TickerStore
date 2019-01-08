@@ -37,6 +37,8 @@ The default order in which the data is fetched:
 
 If one fails, the next one is tried in order.  
 
+## Using with .env file (python-dotenv)
+
 Using with **python-dotenv**:
 
 ```dotenv
@@ -57,6 +59,8 @@ fetcher.historical_data("SBIN", date(2018,1,1), date(2018,1,30), TickerStore.INT
 
 ```
 
+
+## Using with Upstox
 Using only with **Upstox**:
 
 ```python
