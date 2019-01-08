@@ -32,17 +32,19 @@ class TickerStore:
         self.fetch_order = [TickerStore.UPSTOX, TickerStore.NSE]  # Default fetch order
 
         # Load the values from .env files to Enviroment variable
-        if "dotenv" in kwargs:
-            load_dotenv(dotenv_path=kwargs["dotenv"])
+        if "dotenv_path" in kwargs:
+            load_dotenv(dotenv_path=kwargs["dotenv_path"])
 
         if (
             "upstox_api_key" in kwargs.keys()
             and "upstox_api_secret" in kwargs.keys()
             and "upstox_redirect_uri" in kwargs.keys()
+            and "temp_server_auth_page" in kwargs.keys()
         ):
             os.environ["UPSTOX_API_KEY"] = kwargs["upstox_api_key"]
             os.environ["UPSTOX_API_SECRET"] = kwargs["upstox_api_secret"]
             os.environ["UPSTOX_REDIRECT_URI"] = kwargs["upstox_redirect_uri"]
+            os.environ["TEMP_SERVER_AUTH_PAGE"] = kwargs["temp_server_auth_page"]
 
     def set_fetch_order(self, fetch_order):
         """
