@@ -8,7 +8,7 @@ setuptools.setup(
     version="0.0.4",
     author="Apoorva Singh",
     author_email="apoorva.singh157@gmail.com",
-    description="Fetches historical financial data from stock market",
+    description="Historical data of financial instruments from NSE",
     long_description=long_description,
     url="https://github.com/meticulousCraftman/tickerstore",
     license="MIT",
