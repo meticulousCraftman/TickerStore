@@ -65,7 +65,7 @@ from tickerstore.store import TickerStore
 from dotenv import find_dotenv
 from datetime import date
 
-fetcher = TickerStore(dotenv=find_dotenv())
+fetcher = TickerStore(dotenv_path=find_dotenv())
 fetcher.historical_data("SBIN", date(2018,1,1), date(2018,1,30), TickerStore.INTERVAL_DAY_1)
 
 ```
@@ -82,6 +82,7 @@ fetcher = TickerStore(
     upstox_api_key="<YOUR_UPSTOX_API_KEY>",
     upstox_api_secret="<YOUR_UPSTOX_API_SECRET>",
     upstox_redirect_uri="http://localhost:5000/callback",
+    temp_server_auth_page="http://localhost:8000/"
     )
 
 fetcher.historical_data("SBIN", date(2018,1,1), date(2018,1,30), TickerStore.INTERVAL_DAY_1)
@@ -97,7 +98,7 @@ from tickerstore.store import TickerStore
 from dotenv import find_dotenv
 from datetime import date
 
-fetcher = TickerStore(dotenv=find_dotenv())
+fetcher = TickerStore(dotenv_path=find_dotenv())
 fetcher.set_fetch_order([TickerStore.NSE, TickerStore.UPSTOX])
 
 fetcher.historical_data("SBIN", date(2018,1,1), date(2018,1,30), TickerStore.INTERVAL_DAY_1)
