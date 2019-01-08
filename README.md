@@ -13,9 +13,15 @@ Ticker Store is designed to be the simplest way possible to get historical data 
 $ pip install tickerstore
 ```
 
-## Usage
+## Basic Usage
 
-Vanilla usage :-
+Using TickerStore you can specify the source from where the data needs
+to be fetched. At present, there are 2 sources of data **Upstox** and 
+**NSE**.
+
+EOD (End of Day) data can be used simple by using the following piece
+of code. 
+
 ```python
 from tickerstore.store import TickerStore
 from datetime import date
@@ -24,6 +30,12 @@ fetcher = TickerStore()
 fetcher.historical_data("SBIN", date(2018,1,1), date(2018,1,30), TickerStore.INTERVAL_DAY_1)
 
 ```
+
+The default order in which the data is fetched:
+  1. Upstox
+  2. NSE  
+
+If one fails, the next one is tried in order.  
 
 Using with **python-dotenv**:
 
