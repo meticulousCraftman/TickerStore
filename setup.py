@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="TickerStore",
-    version="0.0.4",
+    version="0.0.5",
     author="Apoorva Singh",
     author_email="apoorva.singh157@gmail.com",
     description="Historical data of financial instruments from NSE",
@@ -21,6 +21,7 @@ setuptools.setup(
         "nsepy",
         "pandas",
         "requests",
+        "lxml",
     ],
     packages=setuptools.find_packages(),
     classifiers=[
