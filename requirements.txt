@@ -1,7 +1,9 @@
+ansimarkup==1.4.0
 appdirs==1.4.3
 attrs==18.2.0
 backcall==0.1.0
 beautifulsoup4==4.7.0
+better-exceptions-fork==0.2.1.post6
 bleach==3.0.2
 certifi==2018.11.29
 chardet==3.0.4
@@ -20,6 +22,7 @@ ipython-genutils==0.2.0
 itsdangerous==1.1.0
 jedi==0.13.1
 Jinja2==2.10
+loguru==0.2.5
 lxml==4.3.0
 MarkupSafe==1.1.0
 nsepy==0.7
@@ -50,7 +53,7 @@ toml==0.10.0
 tqdm==4.28.1
 traitlets==4.3.2
 twine==1.12.1
-upstox==1.5.5
+upstox==2.0.0
 urllib3==1.24.1
 wcwidth==0.1.7
 webencodings==0.5.1
