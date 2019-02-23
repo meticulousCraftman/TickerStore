@@ -13,6 +13,7 @@ import time
 import json
 import math
 import crayons
+import urllib3
 
 logger.add("TickerStore.log", rotation="50 MB")
 
@@ -172,6 +173,9 @@ class TickerStore:
 
         """
 
+        # Fetching upstox access token
+        self.__upstox_get_access_token()
+
         # Fetching data depending on the interval specified
         data = None
 
@@ -243,13 +247,26 @@ class TickerStore:
                 )
 
         except requests.HTTPError as e:
-            logger.error(f"Error occured (requests.HTTPError) : {e}")
+            logger.error(f"Exception occured (requests.HTTPError) : {e}")
+
+        except requests.ConnectionError as e:
+            logger.exception("Exception Occured! (requests.ConnectionError)")
 
         # Data formatting
         logger.info("Creating pandas dataframe")
         formatted_data = pandas.DataFrame(data)
 
+        # setting dtypes for columns
+        formatted_data.close = formatted_data.close.astype(float)
+        formatted_data.high = formatted_data.high.astype(float)
+        formatted_data.low = formatted_data.low.astype(float)
+        formatted_data.open = formatted_data.open.astype(float)
+        formatted_data.timestamp = formatted_data.timestamp.astype(int)
+        formatted_data.volume = formatted_data.volume.astype(int)
+
+        # Formatting dataframe for consumption
         logger.info("Formatting timestamp information in dataframe")
+        logger.debug("\n" + str(formatted_data))
         formatted_data["timestamp"] = formatted_data["timestamp"] / 1000
         formatted_data["timestamp"] = formatted_data["timestamp"].apply(
             datetime.datetime.fromtimestamp
@@ -267,8 +284,6 @@ class TickerStore:
                 "volume": "Volume",
             }
         )
-        logger.info("Dropping column named 'cp' from dataframe")
-        formatted_data = formatted_data.drop(columns=["cp"])
 
         logger.info("returning formatted_data")
         return formatted_data
@@ -329,22 +344,30 @@ class TickerStore:
         ):
             logger.info("api_key, redirect_uri and api_secret are not temp")
             logger.info("creating an Upstox Session")
-            s = Session(os.getenv("UPSTOX_API_KEY"))
-            s.set_redirect_uri(os.getenv("UPSTOX_REDIRECT_URI"))
-            s.set_api_secret(os.getenv("UPSTOX_API_SECRET"))
-            url = s.get_login_url()
+            try:
+                s = Session(os.getenv("UPSTOX_API_KEY"))
+                s.set_redirect_uri(os.getenv("UPSTOX_REDIRECT_URI"))
+                s.set_api_secret(os.getenv("UPSTOX_API_SECRET"))
+                url = s.get_login_url()
 
-            req = requests.get(url)
-            logger.debug(f"Status code for the login url request is {req.status_code}")
+                req = requests.get(url)
+                logger.debug(
+                    f"Status code for the login url request is {req.status_code}"
+                )
 
-            if req.status_code != 200:
-                # Something, wrong with the API or credentials provided
-                info = req.json()
-                logger.debug(f"Unable to verify credentials. Error: {info}")
-                return  # Don't continue execution if there was an error
+                if req.status_code != 200:
+                    # Something, wrong with the API or credentials provided
+                    info = req.json()
+                    logger.debug(f"Unable to verify credentials. Error: {info}")
+                    return  # Don't continue execution if there was an error
 
-            # Upstox credentials are verified
-            self.upstox_credentials_verified = True
+                # Upstox credentials are verified
+                self.upstox_credentials_verified = True
+
+            except urllib3.HTTPSConnectionPool:
+                logger.exception(
+                    "HTTPSConnectionPool error while creating upstox session object."
+                )
 
         else:
             logger.error(
