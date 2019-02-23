@@ -34,12 +34,16 @@ class TickerStore:
     def __init__(self, **kwargs):
         logger.info("Creating TickerStore instance object")
         self.fetch_order = [TickerStore.UPSTOX, TickerStore.NSE]  # Default fetch order
+        self.upstox_credentials_verified = (
+            False
+        )  # To make sure upstox credentials are correct
+        self.upstox_access_token = None  # For storing the upstox access token
 
         # Load the values from .env files to Enviroment variable
         if "dotenv_path" in kwargs:
             logger.info("dotfile path was passed. Loading dotfile")
             load_dotenv(dotenv_path=kwargs["dotenv_path"])
-            # verify credentails here!!
+            self.__upstox_verify_credentails()
             logger.info("dotfile loaded")
 
         if (
@@ -53,7 +57,7 @@ class TickerStore:
             os.environ["UPSTOX_API_SECRET"] = kwargs["upstox_api_secret"]
             os.environ["UPSTOX_REDIRECT_URI"] = kwargs["upstox_redirect_uri"]
             os.environ["TEMP_SERVER_AUTH_PAGE"] = kwargs["temp_server_auth_page"]
-            # verify creds here !!
+            self.__upstox_verify_credentails()
 
     def set_fetch_order(self, fetch_order):
         """
@@ -103,7 +107,7 @@ class TickerStore:
         for source in self.fetch_order:
 
             # Source: Upstox
-            if source == TickerStore.UPSTOX:
+            if source == TickerStore.UPSTOX and self.upstox_credentials_verified:
 
                 # Fetching data from upstox
                 logger.info("Trying source UPSTOX for fetching historical data")
@@ -168,99 +172,6 @@ class TickerStore:
 
         """
 
-        @logger.catch
-        def verify_credentails():
-            """Verify the given Upstox credentials and then proceed to fetch historical data."""
-
-            api_key = os.getenv("UPSTOX_API_KEY", "temp")
-            redirect_uri = os.getenv("UPSTOX_REDIRECT_URI", "temp")
-            api_secret = os.getenv("UPSTOX_API_SECRET", "temp")
-
-            if (
-                api_key is not "temp"
-                or redirect_uri is not "temp"
-                or api_secret is not "temp"
-            ):
-                s = Session(os.getenv("UPSTOX_API_KEY"))
-                s.set_redirect_uri(os.getenv("UPSTOX_REDIRECT_URI"))
-                s.set_api_secret(os.getenv("UPSTOX_API_SECRET"))
-                url = s.get_login_url()
-
-                req = requests.get(url)
-                print(req.status_code)
-                if req.status_code != 200:
-                    # Something, wrong with the API or credentials provided
-                    info = req.json()
-                    raise SourceError(str(info))
-            else:
-                raise SourceError("Invalid Upstox API Key and API Secret.")
-
-        # Defining path to access token file
-        logger.info("Defining path to access token file.")
-        package_folder_path = pathlib.Path(__file__).parent
-        access_token_file = package_folder_path / "access_token.file"
-        logger.debug(f"access token file path is {access_token_file}")
-
-        # Access toke file exists
-        if access_token_file.exists():
-            logger.info("access token file already exists")
-
-            # Open access token file
-            with open(access_token_file, "r") as file:
-
-                # Load and parse data from file
-                logger.info("Opening access token file")
-                data = json.load(file)
-                access_token_time = datetime.datetime.fromtimestamp(data["time"])
-                present_time = datetime.datetime.fromtimestamp(int(time.time()))
-
-                # Content in file is old, re-fetch access token
-                if math.fabs(access_token_time.day - present_time.day) > 0:
-
-                    # Again fetch the access_token
-                    logger.info("access token file contains stale credentials")
-                    logger.info("verifying API key and secret")
-                    verify_credentails()
-                    logger.info("API key and secret verified")
-                    logger.info("Retrieving access token for the user")
-                    access_token = daemon.auth_upstox()
-                    logger.info("Access token for the user retrieved")
-                    logger.debug(f"Access Token is : {access_token}")
-
-                    # Writing new access token to file
-                    with open(access_token_file, "w") as z:
-                        logger.info("Writing new access token to file")
-                        json.dump(
-                            {"access_token": access_token, "time": int(time.time())}, z
-                        )
-                    logger.info("New access token data written to file")
-
-                # Contents of file is new
-                else:
-                    logger.info("Contents of access token file is usable")
-                    access_token = data["access_token"]
-                    print("Found access_token.file (Contents)--->")
-                    print(data)
-
-        # No access token file found
-        else:
-
-            # No access token file found, authorizing user and creating access token file
-            logger.info("access_token.file wasn't fonud.")
-            logger.info("verifying API key, secret credentials")
-            verify_credentails()
-            logger.info("API key, secret credentials verified")
-            logger.info("Fetching access token")
-            access_token = daemon.auth_upstox()
-            logger.debug(f"access token fetched: {access_token}")
-
-            # Writing the access token to file
-            with open(access_token_file, "w") as file:
-                logger.info("Writing the new access token to file")
-                json.dump(
-                    {"access_token": access_token, "time": int(time.time())}, file
-                )
-
         # Fetching data depending on the interval specified
         data = None
 
@@ -271,8 +182,7 @@ class TickerStore:
         ##########################################
         try:
             logger.info("Creating Upstox object")
-            u = Upstox(os.getenv("UPSTOX_API_KEY"), access_token)
-
+            u = Upstox(os.getenv("UPSTOX_API_KEY"), self.upstox_access_token)
             logger.info("Fetching the master contracts")
             u.get_master_contract("NSE_EQ")
 
@@ -403,3 +313,106 @@ class TickerStore:
             return formatted_data
         else:
             raise SourceError("not available for requested time interval.")
+
+    def __upstox_verify_credentails(self):
+        """Verify the given Upstox credentials."""
+
+        logger.info("Verifying API key and secret credentials")
+        api_key = os.getenv("UPSTOX_API_KEY", "temp")
+        redirect_uri = os.getenv("UPSTOX_REDIRECT_URI", "temp")
+        api_secret = os.getenv("UPSTOX_API_SECRET", "temp")
+
+        if (
+            api_key is not "temp"
+            or redirect_uri is not "temp"
+            or api_secret is not "temp"
+        ):
+            logger.info("api_key, redirect_uri and api_secret are not temp")
+            logger.info("creating an Upstox Session")
+            s = Session(os.getenv("UPSTOX_API_KEY"))
+            s.set_redirect_uri(os.getenv("UPSTOX_REDIRECT_URI"))
+            s.set_api_secret(os.getenv("UPSTOX_API_SECRET"))
+            url = s.get_login_url()
+
+            req = requests.get(url)
+            logger.debug(f"Status code for the login url request is {req.status_code}")
+
+            if req.status_code != 200:
+                # Something, wrong with the API or credentials provided
+                info = req.json()
+                logger.debug(f"Unable to verify credentials. Error: {info}")
+                return  # Don't continue execution if there was an error
+
+            # Upstox credentials are verified
+            self.upstox_credentials_verified = True
+
+        else:
+            logger.error(
+                "Unable to access values of UPSTOX_API_KEY, UPSTOX_API_SECRET or UPSTOX_REDIRECT_URI"
+            )
+            return
+
+    def __upstox_get_access_token(self):
+        """Fetch access token for given API creds"""
+        # Defining path to access token file
+        logger.info("Getting upstox access token")
+        package_folder_path = pathlib.Path(__file__).parent
+        access_token_file = package_folder_path / "access_token.file"
+
+        # Access toke file exists
+        if access_token_file.exists():
+            logger.info("access_token.file already exists")
+
+            # Open access token file
+            with open(access_token_file, "r") as file:
+
+                # Load and parse data from file
+                logger.info("Opening access_token.file")
+                data = json.load(file)
+                access_token_time = datetime.datetime.fromtimestamp(data["time"])
+                present_time = datetime.datetime.fromtimestamp(int(time.time()))
+
+                # Content in file is old, re-fetch access token
+                if math.fabs(access_token_time.day - present_time.day) > 0:
+
+                    # Again fetch the access_token
+                    logger.info(
+                        "access_token.file contains stale credentials. Getting new credentials"
+                    )
+                    self.upstox_access_token = daemon.auth_upstox()
+                    logger.debug(f"Access Token fetched")
+
+                    # Writing new access token to file
+                    with open(access_token_file, "w") as z:
+                        logger.info("Writing new access token to file")
+                        json.dump(
+                            {
+                                "access_token": self.upstox_access_token,
+                                "time": int(time.time()),
+                            },
+                            z,
+                        )
+
+                # Contents of file is new
+                else:
+                    logger.info("Contents of access token file is usable")
+                    self.upstox_access_token = data["access_token"]
+
+        # No access token file found
+        else:
+
+            # No access token file found, authorizing user and creating access token file
+            logger.info("access_token.file not found, fetching new access token")
+            self.upstx_access_token = daemon.auth_upstox()
+            logger.debug(f"access token fetched: {self.upstox_access_token}")
+
+            # Writing the access token to file
+            with open(access_token_file, "w") as file:
+                logger.info("Writing the new access token to file")
+                json.dump(
+                    {
+                        "access_token": self.upstox_access_token,
+                        "time": int(time.time()),
+                    },
+                    file,
+                )
