@@ -3,6 +3,7 @@ from . import daemon as daemon
 from tickerstore.errors import SourceError
 from tickerstore.errors import TickerStoreError
 from dotenv import load_dotenv
+from loguru import logger
 import nsepy
 import datetime
 import pathlib
@@ -12,6 +13,8 @@ import time
 import json
 import math
 import crayons
+
+logger.add("TickerStore.log", rotation="50 MB")
 
 
 class TickerStore:
@@ -29,11 +32,15 @@ class TickerStore:
     INTERVAL_MONTH_1 = 9
 
     def __init__(self, **kwargs):
+        logger.info("Creating TickerStore instance object")
         self.fetch_order = [TickerStore.UPSTOX, TickerStore.NSE]  # Default fetch order
 
         # Load the values from .env files to Enviroment variable
         if "dotenv_path" in kwargs:
+            logger.info("dotfile path was passed. Loading dotfile")
             load_dotenv(dotenv_path=kwargs["dotenv_path"])
+            # verify credentails here!!
+            logger.info("dotfile loaded")
 
         if (
             "upstox_api_key" in kwargs.keys()
@@ -41,10 +48,12 @@ class TickerStore:
             and "upstox_redirect_uri" in kwargs.keys()
             and "temp_server_auth_page" in kwargs.keys()
         ):
+            logger.info("making upstox API key, secret as enviroment variables.")
             os.environ["UPSTOX_API_KEY"] = kwargs["upstox_api_key"]
             os.environ["UPSTOX_API_SECRET"] = kwargs["upstox_api_secret"]
             os.environ["UPSTOX_REDIRECT_URI"] = kwargs["upstox_redirect_uri"]
             os.environ["TEMP_SERVER_AUTH_PAGE"] = kwargs["temp_server_auth_page"]
+            # verify creds here !!
 
     def set_fetch_order(self, fetch_order):
         """
@@ -89,30 +98,46 @@ class TickerStore:
             A list of dictionaries is return. Each dictionary represents
             each time interval.
         """
+        logger.info("Starting to fetch historical data")
         historical_data = None
         for source in self.fetch_order:
 
             # Source: Upstox
             if source == TickerStore.UPSTOX:
+
+                # Fetching data from upstox
+                logger.info("Trying source UPSTOX for fetching historical data")
                 try:
+                    logger.info("Calling upstox_historical_data")
                     historical_data = self.upstox_historical_data(
                         ticker, start_date, end_date, interval
                     )
+                    logger.info("upstox_historical_data method returned")
+
                     break
                 except SourceError as e:
+                    logger.error("Upstox SourceError : %s" % e)
                     print(crayons.red("Upstox source error: %s" % e, bold=True))
 
             # Source: NSE
             elif source == TickerStore.NSE:
+
+                # Fetching data from NSE
+                logger.info("Trying source NSE for fetching historical data")
                 try:
+                    logger.info("Calling nse_historical_data")
                     historical_data = self.nse_historical_data(
                         ticker, start_date, end_date, interval
                     )
+                    logger.info("nse_historical_data method returned")
+
                     break
                 except SourceError as e:
+                    logger.error("NSE SourceError : %s" % e)
                     print(crayons.red("NSE source error: %s" % e, bold=True))
 
         if historical_data is None:
+            logger.error("None of the source provided any data")
             raise TickerStoreError(
                 "No source provided data for the requested time interval!"
             )
@@ -143,6 +168,7 @@ class TickerStore:
 
         """
 
+        @logger.catch
         def verify_credentails():
             """Verify the given Upstox credentials and then proceed to fetch historical data."""
 
@@ -169,74 +195,159 @@ class TickerStore:
             else:
                 raise SourceError("Invalid Upstox API Key and API Secret.")
 
+        # Defining path to access token file
+        logger.info("Defining path to access token file.")
         package_folder_path = pathlib.Path(__file__).parent
         access_token_file = package_folder_path / "access_token.file"
+        logger.debug(f"access token file path is {access_token_file}")
 
         # Access toke file exists
         if access_token_file.exists():
+            logger.info("access token file already exists")
+
+            # Open access token file
             with open(access_token_file, "r") as file:
+
+                # Load and parse data from file
+                logger.info("Opening access token file")
                 data = json.load(file)
                 access_token_time = datetime.datetime.fromtimestamp(data["time"])
                 present_time = datetime.datetime.fromtimestamp(int(time.time()))
 
                 # Content in file is old, re-fetch access token
                 if math.fabs(access_token_time.day - present_time.day) > 0:
+
                     # Again fetch the access_token
+                    logger.info("access token file contains stale credentials")
+                    logger.info("verifying API key and secret")
                     verify_credentails()
+                    logger.info("API key and secret verified")
+                    logger.info("Retrieving access token for the user")
                     access_token = daemon.auth_upstox()
+                    logger.info("Access token for the user retrieved")
+                    logger.debug(f"Access Token is : {access_token}")
+
+                    # Writing new access token to file
                     with open(access_token_file, "w") as z:
+                        logger.info("Writing new access token to file")
                         json.dump(
                             {"access_token": access_token, "time": int(time.time())}, z
                         )
+                    logger.info("New access token data written to file")
 
                 # Contents of file is new
                 else:
+                    logger.info("Contents of access token file is usable")
                     access_token = data["access_token"]
                     print("Found access_token.file (Contents)--->")
                     print(data)
 
         # No access token file found
         else:
-            # If everything is fine, proceed to get the access token
+
+            # No access token file found, authorizing user and creating access token file
+            logger.info("access_token.file wasn't fonud.")
+            logger.info("verifying API key, secret credentials")
             verify_credentails()
+            logger.info("API key, secret credentials verified")
+            logger.info("Fetching access token")
             access_token = daemon.auth_upstox()
+            logger.debug(f"access token fetched: {access_token}")
+
+            # Writing the access token to file
             with open(access_token_file, "w") as file:
+                logger.info("Writing the new access token to file")
                 json.dump(
                     {"access_token": access_token, "time": int(time.time())}, file
                 )
 
-        # Fetch the actual data
-        u = Upstox(os.getenv("UPSTOX_API_KEY"), access_token)
-        u.get_master_contract("NSE_EQ")
-        instrument = u.get_instrument_by_symbol("NSE_EQ", ticker)
-
         # Fetching data depending on the interval specified
         data = None
-        if interval == TickerStore.INTERVAL_MINUTE_1:
-            data = u.get_ohlc(instrument, OHLCInterval.Minute_1, start_date, end_date)
-        elif interval == TickerStore.INTERVAL_MINUTE_5:
-            data = u.get_ohlc(instrument, OHLCInterval.Minute_5, start_date, end_date)
-        elif interval == TickerStore.INTERVAL_MINUTE_10:
-            data = u.get_ohlc(instrument, OHLCInterval.Minute_10, start_date, end_date)
-        elif interval == TickerStore.INTERVAL_MINUTE_30:
-            data = u.get_ohlc(instrument, OHLCInterval.Minute_30, start_date, end_date)
-        elif interval == TickerStore.INTERVAL_MINUTE_60:
-            data = u.get_ohlc(instrument, OHLCInterval.Minute_60, start_date, end_date)
-        elif interval == TickerStore.INTERVAL_DAY_1:
-            data = u.get_ohlc(instrument, OHLCInterval.Day_1, start_date, end_date)
-        elif interval == TickerStore.INTERVAL_WEEK_1:
-            data = u.get_ohlc(instrument, OHLCInterval.Week_1, start_date, end_date)
-        elif interval == TickerStore.INTERVAL_MONTH_1:
-            data = u.get_ohlc(instrument, OHLCInterval.Month_1, start_date, end_date)
+
+        ##########################################
+        # Credentails have been verfied
+        # Creating upstox object to connect with
+        # the API
+        ##########################################
+        try:
+            logger.info("Creating Upstox object")
+            u = Upstox(os.getenv("UPSTOX_API_KEY"), access_token)
+
+            logger.info("Fetching the master contracts")
+            u.get_master_contract("NSE_EQ")
+
+            logger.info("Fetch all equity symbols")
+            instrument = u.get_instrument_by_symbol("NSE_EQ", ticker)
+            logger.info("All equity symbols fetched")
+
+            # 1 minute interval
+            if interval == TickerStore.INTERVAL_MINUTE_1:
+                logger.info("fetching data for 1 minute interval")
+                data = u.get_ohlc(
+                    instrument, OHLCInterval.Minute_1, start_date, end_date
+                )
+
+            # 5 minute interval
+            elif interval == TickerStore.INTERVAL_MINUTE_5:
+                logger.info("fetching data for 5 minute interval")
+                data = u.get_ohlc(
+                    instrument, OHLCInterval.Minute_5, start_date, end_date
+                )
+
+            # 10 minute interval
+            elif interval == TickerStore.INTERVAL_MINUTE_10:
+                logger.info("fetching data for 10 minute interval")
+                data = u.get_ohlc(
+                    instrument, OHLCInterval.Minute_10, start_date, end_date
+                )
+
+            # 30 minute interval
+            elif interval == TickerStore.INTERVAL_MINUTE_30:
+                logger.info("fetching data for 30 minute interval")
+                data = u.get_ohlc(
+                    instrument, OHLCInterval.Minute_30, start_date, end_date
+                )
+
+            # 60 minute interval
+            elif interval == TickerStore.INTERVAL_MINUTE_60:
+                logger.info("fetching data for 60 minute interval")
+                data = u.get_ohlc(
+                    instrument, OHLCInterval.Minute_60, start_date, end_date
+                )
+
+            # 1 day interval
+            elif interval == TickerStore.INTERVAL_DAY_1:
+                logger.info("fetching data for 1 day interval")
+                data = u.get_ohlc(instrument, OHLCInterval.Day_1, start_date, end_date)
+
+            # 1 week interval
+            elif interval == TickerStore.INTERVAL_WEEK_1:
+                logger.info("fetching data for 1 week interval")
+                data = u.get_ohlc(instrument, OHLCInterval.Week_1, start_date, end_date)
+
+            # 1 month interval
+            elif interval == TickerStore.INTERVAL_MONTH_1:
+                logger.info("fetching data for 1 month interval")
+                data = u.get_ohlc(
+                    instrument, OHLCInterval.Month_1, start_date, end_date
+                )
+
+        except requests.HTTPError as e:
+            logger.error(f"Error occured (requests.HTTPError) : {e}")
 
         # Data formatting
+        logger.info("Creating pandas dataframe")
         formatted_data = pandas.DataFrame(data)
+
+        logger.info("Formatting timestamp information in dataframe")
         formatted_data["timestamp"] = formatted_data["timestamp"] / 1000
         formatted_data["timestamp"] = formatted_data["timestamp"].apply(
             datetime.datetime.fromtimestamp
         )
         formatted_data = formatted_data.set_index("timestamp")
         formatted_data["Symbol"] = ticker
+
+        logger.info("Renaming column name")
         formatted_data = formatted_data.rename(
             columns={
                 "close": "Close",
@@ -246,8 +357,10 @@ class TickerStore:
                 "volume": "Volume",
             }
         )
+        logger.info("Dropping column named 'cp' from dataframe")
         formatted_data = formatted_data.drop(columns=["cp"])
 
+        logger.info("returning formatted_data")
         return formatted_data
 
     def nse_historical_data(self, ticker, start_date, end_date, interval):
