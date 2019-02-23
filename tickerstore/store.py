@@ -34,11 +34,14 @@ class TickerStore:
 
     def __init__(self, **kwargs):
         logger.info("Creating TickerStore instance object")
+
+        # Initializing object with default values
         self.fetch_order = [TickerStore.UPSTOX, TickerStore.NSE]  # Default fetch order
         self.upstox_credentials_verified = (
             False
         )  # To make sure upstox credentials are correct
         self.upstox_access_token = None  # For storing the upstox access token
+        self.access_token_file_path = None  # path for access token file
 
         # Load the values from .env files to Enviroment variable
         if "dotenv_path" in kwargs:
@@ -59,6 +62,12 @@ class TickerStore:
             os.environ["UPSTOX_REDIRECT_URI"] = kwargs["upstox_redirect_uri"]
             os.environ["TEMP_SERVER_AUTH_PAGE"] = kwargs["temp_server_auth_page"]
             self.__upstox_verify_credentails()
+
+        if "access_token_file_path" in kwargs.keys():
+            self.access_token_file_path = kwargs["access_token_file_path"]
+            logger.debug(
+                f"Specified a custom path for access_token.file: {self.access_token_file_path}"
+            )
 
     def set_fetch_order(self, fetch_order):
         """
@@ -285,7 +294,7 @@ class TickerStore:
             }
         )
 
-        logger.info("returning formatted_data")
+        logger.info("returning formatted data frame")
         return formatted_data
 
     def nse_historical_data(self, ticker, start_date, end_date, interval):
@@ -377,10 +386,18 @@ class TickerStore:
 
     def __upstox_get_access_token(self):
         """Fetch access token for given API creds"""
-        # Defining path to access token file
-        logger.info("Getting upstox access token")
-        package_folder_path = pathlib.Path(__file__).parent
+
+        logger.info("Getting Upstox access token")
+
+        # Choose access_token_file_path or the __file__ for storing access_token on disk
+        if self.access_token_file_path:
+            package_folder_path = pathlib.Path(self.access_token_file_path)
+        else:
+            package_folder_path = pathlib.Path(__file__).parent
+
         access_token_file = package_folder_path / "access_token.file"
+
+        logger.debug(f"Path for access_token file: {access_token_file}")
 
         # Access toke file exists
         if access_token_file.exists():
@@ -426,7 +443,7 @@ class TickerStore:
 
             # No access token file found, authorizing user and creating access token file
             logger.info("access_token.file not found, fetching new access token")
-            self.upstx_access_token = daemon.auth_upstox()
+            self.upstox_access_token = daemon.auth_upstox()
             logger.debug(f"access token fetched: {self.upstox_access_token}")
 
             # Writing the access token to file
