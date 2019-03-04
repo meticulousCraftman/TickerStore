@@ -153,7 +153,7 @@ class TickerStore:
         if historical_data is None:
             logger.error("None of the source provided any data")
             raise TickerStoreError(
-                "No source provided data for the requested time interval!"
+                "No data returned. No data source provided data for the requested time interval!"
             )
 
         return historical_data
@@ -257,9 +257,11 @@ class TickerStore:
 
         except requests.HTTPError as e:
             logger.error(f"Exception occured (requests.HTTPError) : {e}")
+            return None
 
         except requests.ConnectionError as e:
             logger.exception("Exception Occured! (requests.ConnectionError)")
+            return None
 
         # Data formatting
         logger.info("Creating pandas dataframe")
@@ -275,7 +277,6 @@ class TickerStore:
 
         # Formatting dataframe for consumption
         logger.info("Formatting timestamp information in dataframe")
-        logger.debug("\n" + str(formatted_data))
         formatted_data["timestamp"] = formatted_data["timestamp"] / 1000
         formatted_data["timestamp"] = formatted_data["timestamp"].apply(
             datetime.datetime.fromtimestamp
