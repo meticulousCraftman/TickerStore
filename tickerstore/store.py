@@ -382,9 +382,9 @@ class TickerStore:
                 # Upstox credentials are verified
                 self.upstox_credentials_verified = True
 
-            except urllib3.HTTPSConnectionPool:
+            except ConnectionError:
                 logger.exception(
-                    "HTTPSConnectionPool error while creating upstox session object."
+                    "ConnectionError(HTTPSConnectionPool) error while creating upstox session object."
                 )
 
         else:
