@@ -14,6 +14,7 @@ import json
 import math
 import crayons
 import urllib3
+import pandas as pd
 
 logger.add("TickerStore.log", rotation="50 MB")
 
@@ -152,9 +153,11 @@ class TickerStore:
 
         if historical_data is None:
             logger.error("None of the source provided any data")
-            raise TickerStoreError(
-                "No data returned. No data source provided data for the requested time interval!"
-            )
+            # Returning back an empty data frame
+            return None
+            # raise TickerStoreError(
+            #     "No data returned. No data source provided data for the requested time interval!"
+            # )
 
         return historical_data
 
@@ -265,38 +268,43 @@ class TickerStore:
 
         # Data formatting
         logger.info("Creating pandas dataframe")
-        formatted_data = pandas.DataFrame(data)
 
-        # setting dtypes for columns
-        formatted_data.close = formatted_data.close.astype(float)
-        formatted_data.high = formatted_data.high.astype(float)
-        formatted_data.low = formatted_data.low.astype(float)
-        formatted_data.open = formatted_data.open.astype(float)
-        formatted_data.timestamp = formatted_data.timestamp.astype(int)
-        formatted_data.volume = formatted_data.volume.astype(int)
+        # If there was no data, return None
+        if len(data) > 0:
+            formatted_data = pandas.DataFrame(data)
 
-        # Formatting dataframe for consumption
-        logger.info("Formatting timestamp information in dataframe")
-        formatted_data["timestamp"] = formatted_data["timestamp"] / 1000
-        formatted_data["timestamp"] = formatted_data["timestamp"].apply(
-            datetime.datetime.fromtimestamp
-        )
-        formatted_data = formatted_data.set_index("timestamp")
-        formatted_data["Symbol"] = ticker
+            # setting dtypes for columns
+            formatted_data.close = formatted_data.close.astype(float)
+            formatted_data.high = formatted_data.high.astype(float)
+            formatted_data.low = formatted_data.low.astype(float)
+            formatted_data.open = formatted_data.open.astype(float)
+            formatted_data.timestamp = formatted_data.timestamp.astype(int)
+            formatted_data.volume = formatted_data.volume.astype(int)
 
-        logger.info("Renaming column name")
-        formatted_data = formatted_data.rename(
-            columns={
-                "close": "Close",
-                "high": "High",
-                "low": "Low",
-                "open": "Open",
-                "volume": "Volume",
-            }
-        )
+            # Formatting dataframe for consumption
+            logger.info("Formatting timestamp information in dataframe")
+            formatted_data["timestamp"] = formatted_data["timestamp"] / 1000
+            formatted_data["timestamp"] = formatted_data["timestamp"].apply(
+                datetime.datetime.fromtimestamp
+            )
+            formatted_data = formatted_data.set_index("timestamp")
+            formatted_data["Symbol"] = ticker
 
-        logger.info("returning formatted data frame")
-        return formatted_data
+            logger.info("Renaming column name")
+            formatted_data = formatted_data.rename(
+                columns={
+                    "close": "Close",
+                    "high": "High",
+                    "low": "Low",
+                    "open": "Open",
+                    "volume": "Volume",
+                }
+            )
+
+            logger.info("returning formatted data frame")
+            return formatted_data
+        else:
+            return None
 
     def nse_historical_data(self, ticker, start_date, end_date, interval):
         """
