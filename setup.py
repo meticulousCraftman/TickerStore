@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="TickerStore",
-    version="0.0.6",
+    version="0.0.7",
     author="Apoorva Singh",
     author_email="apoorva.singh157@gmail.com",
     description="Historical data of financial instruments from NSE",
