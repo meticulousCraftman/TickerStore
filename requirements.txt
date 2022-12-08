@@ -5,7 +5,7 @@ backcall==0.1.0
 beautifulsoup4==4.7.0
 better-exceptions-fork==0.2.1.post6
 bleach==3.0.2
-certifi==2018.11.29
+certifi==2022.12.7
 chardet==3.0.4
 Click==7.0
 colorama==0.4.1
